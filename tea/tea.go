@@ -35,3 +35,26 @@ func (c *Cipher) Decrypt(dst, src *Block) {
 	}
 	dst.fromInt(&v0, &v1)
 }
+
+func (c *Cipher) CTR(dst, src []Block, IV [6]byte) {
+	var ivNumber Block
+
+	copy(ivNumber[:6], IV[:])
+
+	// Explicitly write zeros
+	copy(ivNumber[6:8], []byte{0x0000, 0x0000})
+
+	for i, p := range src {
+		var e Block
+		c.Encrypt(&e, &ivNumber)
+
+		var P = p[:]
+		var E = e[:]
+
+		var destination Block
+		xorBytes(destination[:], P, E)
+
+		dst[i] = destination
+		byteIncrement(ivNumber[6:8])
+	}
+}
