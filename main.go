@@ -3,14 +3,23 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	x "github.com/aaomidi/tea-go/tea"
+	"github.com/aaomidi/blockcipher/cbc"
+	"github.com/aaomidi/blockcipher/ecb"
+
+	"github.com/aaomidi/blockcipher/ctr"
+
+	"github.com/aaomidi/blockcipher"
+	x "github.com/aaomidi/go-tea/tea"
 	"golang.org/x/crypto/tea"
 )
 
 func main() {
 	test1()
 	test2()
+	test3()
 	testCTR()
+	testECB()
+	testCBC()
 }
 func test1() {
 	fmt.Println("Test 1 - My implementation")
@@ -37,7 +46,7 @@ func test1() {
 }
 
 func test2() {
-	fmt.Println("Test 2 - GoLang's Implementation ")
+	fmt.Println("Test 2 - GoLang's Implementation")
 	data := [8]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF}
 
 	k, _ := hex.DecodeString("A56BABCD00000000FFFFFFFFABCDEF01")
@@ -55,41 +64,117 @@ func test2() {
 	fmt.Println(cipherText)
 	fmt.Println(decryptedText)
 }
+func test3() {
+	fmt.Println("Test 3 - My Interface Implementation")
+	data := [8]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF}
+
+	k, _ := hex.DecodeString("A56BABCD00000000FFFFFFFFABCDEF01")
+
+	plainText := data[:]
+	cipherText := make([]byte, 8)
+
+	key := x.KeyFromBytes(k)
+
+	cipher := x.Cipher{Key: key}
+
+	cipher.EncryptBlock(cipherText, plainText)
+	decryptedText := make([]byte, 8)
+	cipher.DecryptBlock(decryptedText, cipherText)
+
+	fmt.Println(plainText)
+	fmt.Println(cipherText)
+	fmt.Println(decryptedText)
+}
 
 func testCTR() {
+	fmt.Println("Test 3 - CTR")
+
 	k, _ := hex.DecodeString("A56BABCD00000000FFFFFFFFABCDEF01")
 	key := x.KeyFromBytes(k)
 
 	cipher := x.Cipher{Key: key}
 
+	method := ctr.CTR{
+		IVIncrement:  ctr.IVIncrement(&cipher),
+		CryptoMethod: blockcipher.CryptoMethod(&cipher),
+	}
+
 	sentence := "Four score and seven years ago our fathers brought forth on this continent, a new\nnation, conceived in Liberty, and dedicated to the proposition that all men are\ncreated equal."
-	fmt.Println(sentence)
 
 	data := []byte(sentence)
 
 	dataBuffer := make([]byte, len(data))
 	copy(dataBuffer, data)
 
-	var blocks []x.Block
-	chunks := x.SliceChunk(dataBuffer, 8)
+	src := x.SliceChunk(dataBuffer, 8)
+	dst := make([][]byte, len(src))
 
-	for _, v := range chunks {
-		var block [8]byte
-		copy(block[:], v)
+	fmt.Println(src)
 
-		blocks = append(blocks, block)
+	method.Apply(dst, src, []byte{0, 5, 0, 0, 0, 0, 0, 2})
+	fmt.Println(dst)
+
+	method.Apply(src, dst, []byte{0, 5, 0, 0, 0, 0, 0, 2})
+	fmt.Println(src)
+	fmt.Println(string(x.JoinBytes(src)))
+}
+
+func testECB() {
+	k, _ := hex.DecodeString("A56BABCD00000000FFFFFFFFABCDEF01")
+	key := x.KeyFromBytes(k)
+
+	cipher := x.Cipher{Key: key}
+
+	method := ecb.ECB{
+		CryptoMethod: blockcipher.CryptoMethod(&cipher),
 	}
 
-	result := make([]x.Block, len(blocks))
+	sentence := "Four score and seven years ago our fathers brought forth on this continent, a new\nnation, conceived in Liberty, and dedicated to the proposition that all men are\ncreated equal."
 
-	// Encrypt
-	cipher.CTR(result, blocks, [6]byte{0, 0, 0, 0, 0, 0})
+	data := []byte(sentence)
 
-	// Decrypt
-	cipher.CTR(blocks, result, [6]byte{0, 0, 0, 0, 0, 0})
+	dataBuffer := make([]byte, len(data))
+	copy(dataBuffer, data)
 
-	decryptedSentence := x.JoinBlocks(blocks)
+	src := x.SliceChunk(dataBuffer, 8)
+	dst := make([][]byte, len(src))
 
-	fmt.Println(string(data))
-	fmt.Println(string(decryptedSentence))
+	fmt.Println(src)
+
+	method.Encrypt(dst, src)
+	fmt.Println(dst)
+
+	method.Decrypt(src, dst)
+	fmt.Println(src)
+	fmt.Println(string(x.JoinBytes(src)))
+}
+
+func testCBC() {
+	k, _ := hex.DecodeString("A56BABCD00000000FFFFFFFFABCDEF01")
+	key := x.KeyFromBytes(k)
+
+	cipher := x.Cipher{Key: key}
+
+	method := cbc.CBC{
+		CryptoMethod: blockcipher.CryptoMethod(&cipher),
+	}
+
+	sentence := "Four score and seven years ago our fathers brought forth on this continent, a new\nnation, conceived in Liberty, and dedicated to the proposition that all men are\ncreated equal."
+
+	data := []byte(sentence)
+
+	dataBuffer := make([]byte, len(data))
+	copy(dataBuffer, data)
+
+	src := x.SliceChunk(dataBuffer, 8)
+	dst := make([][]byte, len(src))
+
+	fmt.Println(src)
+
+	method.Encrypt(dst, src, []byte{2, 2, 2, 2, 2, 2, 2, 2})
+	fmt.Println(dst)
+
+	method.Decrypt(src, dst, []byte{2, 2, 2, 2, 2, 2, 2, 2})
+	fmt.Println(src)
+	fmt.Println(string(x.JoinBytes(src)))
 }

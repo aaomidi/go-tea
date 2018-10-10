@@ -1,5 +1,20 @@
 package tea
 
+func (c *Cipher) EncryptBlock(dst, src []byte) {
+	var source Block
+	copy(source[:], src)
+	var destination Block
+	c.Encrypt(&destination, &source)
+	copy(dst, destination[:])
+}
+
+func (c *Cipher) DecryptBlock(dst, src []byte) {
+	var source Block
+	copy(source[:], src)
+	var destination Block
+	c.Decrypt(&destination, &source)
+	copy(dst, destination[:])
+}
 func (c *Cipher) Encrypt(dst, src *Block) {
 	v0, v1 := src.Left(), src.Right()
 
@@ -34,27 +49,4 @@ func (c *Cipher) Decrypt(dst, src *Block) {
 		sum -= delta
 	}
 	dst.fromInt(&v0, &v1)
-}
-
-func (c *Cipher) CTR(dst, src []Block, IV [6]byte) {
-	var ivNumber Block
-
-	copy(ivNumber[:6], IV[:])
-
-	// Explicitly write zeros
-	copy(ivNumber[6:8], []byte{0x0000, 0x0000})
-
-	for i, p := range src {
-		var e Block
-		c.Encrypt(&e, &ivNumber)
-
-		var P = p[:]
-		var E = e[:]
-
-		var destination Block
-		xorBytes(destination[:], P, E)
-
-		dst[i] = destination
-		byteIncrement(ivNumber[6:8])
-	}
 }

@@ -64,3 +64,30 @@ func (k *Key) Array() [4]uint32 {
 
 	return result
 }
+
+func (c *Cipher) Increment(iv []byte) {
+	carry := true
+	for i := len(iv) - 1; i >= 0; i-- {
+		val := iv[i]
+		// A->F
+		if val > 64 {
+			val -= 64 - 9
+		} else {
+			val -= 48
+		}
+		if carry {
+			val += 1
+			carry = false
+		}
+		if val == 16 {
+			val = 0
+			carry = true
+		}
+
+		if val >= 10 {
+			iv[i] = val + 64 - 9
+		} else {
+			iv[i] = val + 48
+		}
+	}
+}
