@@ -15,6 +15,7 @@ var (
 type Key [16]byte
 type Block [8]byte
 type Feistel = uint32
+type IV = [6]byte
 
 type Cipher struct {
 	Key *Key
