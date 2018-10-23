@@ -28,6 +28,9 @@ func (b *Block) Left() Feistel {
 func (b *Block) Right() Feistel {
 	return e.Uint32(b[4:])
 }
+func (b *Block) Source() []byte {
+	return b[0:8]
+}
 
 func (b *Block) fromInt(v0, v1 *uint32) {
 	e.PutUint32(b[:4], *v0)
